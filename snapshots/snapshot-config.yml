@@ -1,0 +1,25 @@
+# GCP Snapshots Configuration - Omarovic42
+snapshots:
+  schedule:
+    production:
+      frequency: "0 */6 * * *"
+      retention: 7
+      disk_name: "mobile-api-production-disk"
+      zone: "europe-west1-b"
+      
+    staging:
+      frequency: "0 2 * * *"
+      retention: 3
+      disk_name: "mobile-api-staging-disk"
+      zone: "europe-west1-b"
+      
+  pre_deployment:
+    enabled: true
+    retention: 30
+    naming_pattern: "pre-deploy-{timestamp}-{commit_sha}"
+
+metadata:
+  project: "Mobile API CI/CD"
+  author: "Omarovic42"
+  created: "2025-06-11"
+  version: "1.0.0"
