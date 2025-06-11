@@ -16,7 +16,7 @@
       apt:
         name:
           - docker.io
-          - docker-compose
+          - docker-compose-v2
           - nginx
           - ufw
         state: present
@@ -50,10 +50,10 @@
         mode: '0644'
 
     - name: Pull and start API containers
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: /opt/mobile-api
         state: present
-        pull: yes
+        pull: "always"
 
     - name: Configure Nginx
       template:
