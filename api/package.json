@@ -1,13 +1,14 @@
-{
+﻿{
     "name":  "mobile-api-cicd-omarovic42",
     "version":  "1.0.0",
     "description":  "Mobile API CI/CD - Omarovic42",
     "main":  "server.js",
     "scripts":  {
                     "start":  "node server.js",
-                    "test":  "set NODE_ENV=test \u0026\u0026 jest --coverage",
+                    "test":  "NODE_ENV=test npx jest --coverage",
                     "lint":  "echo Linting complete",
-                    "build":  "echo Build complete"
+                    "build":  "echo Build complete",
+                    "test:ci":  "NODE_ENV=test npx jest --coverage --ci --watchAll=false --forceExit"
                 },
     "dependencies":  {
                          "express":  "^4.18.2",
