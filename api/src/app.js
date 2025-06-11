@@ -89,4 +89,13 @@ app.listen(PORT, () => {
   console.log(`💾 Storage: In-memory (temporary)`);
 });
 
+// Update your health endpoint to match the test expectations
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',  // Changed from 'OK' to 'healthy'
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
 module.exports = app;
