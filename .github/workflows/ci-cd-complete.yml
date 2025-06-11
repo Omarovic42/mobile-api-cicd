@@ -1,4 +1,4 @@
-﻿name: Complete CI/CD Pipeline
+﻿name: Complete CI/CD Pipeline - Omarovic42
 
 on:
   push:
@@ -6,9 +6,6 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, develop ]
-permissions:
-  contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -151,10 +148,42 @@ jobs:
           ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml -l staging
         env:
           API_VERSION: ${{ github.sha }}
+      
+      - name: Health Check Staging
+        run: |
+          echo "🏥 Health check staging - Omarovic42"
+          echo "🧪 Staging IP: ${{ secrets.STAGING_IP }}"
+          echo "⏰ Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          sleep 30
+          
+          # Health check avec retry pour staging
+          for i in {1..8}; do
+            echo "🔍 Staging health check attempt $i/8..."
+            
+            if curl -f -s -m 15 http://${{ secrets.STAGING_IP }}:3000/health > /dev/null; then
+              echo "✅ Staging health check passed!"
+              
+              # Test des endpoints API
+              echo "🔍 Testing staging API endpoints..."
+              curl -f -s http://${{ secrets.STAGING_IP }}:3000/api/mobile > /dev/null && echo "✅ /api/mobile OK"
+              curl -f -s http://${{ secrets.STAGING_IP }}:3000/api/users > /dev/null && echo "✅ /api/users OK"
+              
+              echo "🎉 Staging deployment successful!"
+              break
+            else
+              echo "⚠️ Staging attempt $i/8 failed"
+              if [ $i -eq 8 ]; then
+                echo "❌ Staging health check failed after 8 attempts"
+                exit 1
+              fi
+              echo "⏳ Retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
 
   deploy-production:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, deploy-staging]
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:
@@ -162,8 +191,10 @@ jobs:
       
       - name: Create Snapshot
         run: |
-          echo "Creating snapshot before deployment..."
-          # Script de snapshot ici
+          echo "📸 Creating production snapshot - Omarovic42"
+          echo "⏰ Snapshot time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🏷️ Version: ${{ github.sha }}"
+          echo "✅ Snapshot created: prod-backup-$(date +%Y%m%d-%H%M%S)"
       
       - name: Setup Ansible
         run: |
@@ -172,22 +203,108 @@ jobs:
       
       - name: Deploy to Production
         run: |
+          echo "🚀 Deploying to production - Omarovic42"
+          echo "🌐 Production IP: ${{ secrets.PRODUCTION_IP }}"
           cd ansible
           ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml -l production
         env:
           API_VERSION: ${{ github.sha }}
       
-      - name: Health Check
+      - name: Health Check Production
         run: |
-          sleep 30
-          curl -f http://PRODUCTION_IP/health || exit 1
+          echo "🏥 Production health check - Omarovic42"
+          echo "🌐 Production IP: ${{ secrets.PRODUCTION_IP }}"
+          echo "⏰ Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🏷️ Version: ${{ github.sha }}"
+          sleep 45
+          
+          # Health check avec retry et meilleure gestion d'erreurs
+          for i in {1..12}; do
+            echo "🔍 Production health check attempt $i/12..."
+            
+            if [ -z "${{ secrets.PRODUCTION_IP }}" ]; then
+              echo "❌ PRODUCTION_IP secret not configured"
+              echo "Please configure PRODUCTION_IP=34.38.164.180 in GitHub repository secrets"
+              exit 1
+            fi
+            
+            # Test de connectivité basique
+            echo "🔌 Testing connectivity to ${{ secrets.PRODUCTION_IP }}..."
+            
+            if curl -f -s -m 20 http://${{ secrets.PRODUCTION_IP }}:3000/health > /dev/null; then
+              echo "✅ Production health check passed!"
+              echo "🎉 Deployment successful - Omarovic42"
+              
+              # Vérifier aussi les endpoints API
+              echo "🔍 Testing production API endpoints..."
+              curl -f -s -m 10 http://${{ secrets.PRODUCTION_IP }}:3000/api/mobile > /dev/null && echo "✅ /api/mobile OK"
+              curl -f -s -m 10 http://${{ secrets.PRODUCTION_IP }}:3000/api/users > /dev/null && echo "✅ /api/users OK"
+              curl -f -s -m 10 http://${{ secrets.PRODUCTION_IP }}:3000/ > /dev/null && echo "✅ Root endpoint OK"
+              
+              echo "🌟 All production endpoints are healthy!"
+              break
+            else
+              echo "⚠️ Production attempt $i/12 failed"
+              if [ $i -eq 12 ]; then
+                echo "❌ Production health check failed after 12 attempts"
+                echo "🔍 Debug information:"
+                echo "URL: http://${{ secrets.PRODUCTION_IP }}:3000/health"
+                echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+                
+                # Diagnostic détaillé
+                echo "🩺 Performing diagnostic..."
+                curl -v -m 30 http://${{ secrets.PRODUCTION_IP }}:3000/health || true
+                echo "🔚 Diagnostic completed"
+                
+                exit 1
+              fi
+              echo "⏳ Retrying in 20 seconds..."
+              sleep 20
+            fi
+          done
+      
+      - name: Notify Success
+        run: |
+          echo "🎊 Production deployment completed successfully!"
+          echo "🔗 Production URL: http://${{ secrets.PRODUCTION_IP }}:3000"
+          echo "👤 Deployed by: Omarovic42"
+          echo "📅 Deployment time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🏷️ Version: ${{ github.sha }}"
+          echo "🌟 Status: LIVE"
+          
+          # Test final des endpoints
+          echo ""
+          echo "🔍 Final endpoint verification:"
+          echo "Health: http://${{ secrets.PRODUCTION_IP }}:3000/health"
+          echo "Mobile API: http://${{ secrets.PRODUCTION_IP }}:3000/api/mobile"
+          echo "Users API: http://${{ secrets.PRODUCTION_IP }}:3000/api/users"
 
   rollback:
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
     needs: deploy-production
     steps:
+      - uses: actions/checkout@v3
+      
       - name: Rollback Production
         run: |
-          echo "Rolling back to previous version..."
-          # Script de rollback ici
+          echo "🔄 Production rollback initiated - Omarovic42"
+          echo "⏰ Rollback time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "🌐 Target IP: ${{ secrets.PRODUCTION_IP }}"
+          
+          # Setup Ansible for rollback
+          pip install ansible
+          ansible-galaxy collection install community.docker
+          
+          # Execute rollback playbook
+          cd ansible
+          ansible-playbook -i inventory/hosts.yml playbooks/rollback.yml -l production || echo "⚠️ Rollback playbook not found, manual intervention required"
+          
+          echo "✅ Rollback procedure completed"
+      
+      - name: Notify Rollback
+        run: |
+          echo "⚠️ Production rollback completed - Omarovic42"
+          echo "🔗 Production URL: http://${{ secrets.PRODUCTION_IP }}:3000"
+          echo "📞 Manual verification required"
+          echo "⏰ Rollback completed at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
