@@ -9,79 +9,50 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    version: process.env.VERSION || '1.0.0',
+    version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
-    author: 'Omarovic42',
-    uptime: process.uptime(),
-    server: 'mobile-api-' + (process.env.NODE_ENV || 'development')
+    author: 'Omarovic42'
   });
 });
 
 app.get('/api/mobile', (req, res) => {
   res.json({
-    message: 'Mobile API CI/CD Pipeline - Omarovic42',
-    version: process.env.VERSION || '1.0.0',
-    endpoints: ['/health', '/api/mobile', '/api/users', '/'],
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    pipeline: 'GitHub Actions',
-    infrastructure: 'GCP + Terraform + Ansible'
+    message: 'Mobile API CI/CD - Omarovic42',
+    version: '1.0.0',
+    endpoints: ['/health', '/api/mobile', '/api/users'],
+    timestamp: new Date().toISOString()
   });
 });
 
 app.get('/api/users', (req, res) => {
   res.json({
     users: [
-      { 
-        id: 1, 
-        name: 'Mobile User 1', 
-        device: 'iOS', 
-        active: true,
-        lastLogin: new Date().toISOString()
-      },
-      { 
-        id: 2, 
-        name: 'Mobile User 2', 
-        device: 'Android', 
-        active: true,
-        lastLogin: new Date().toISOString()
-      }
+      { id: 1, name: 'User 1', mobile: true },
+      { id: 2, name: 'User 2', mobile: true }
     ],
-    count: 2,
-    version: process.env.VERSION || '1.0.0',
-    mobile_features: ['push_notifications', 'offline_sync', 'geolocation']
+    count: 2
   });
 });
 
 app.get('/', (req, res) => {
   res.json({
-    project: 'Mobile API CI/CD Pipeline',
+    project: 'Mobile API CI/CD',
     author: 'Omarovic42',
-    version: process.env.VERSION || '1.0.0',
-    description: 'Complete CI/CD pipeline for mobile API',
-    date: '2025-06-11 08:04:17 UTC',
-    technologies: {
-      infrastructure: 'Terraform + GCP',
-      configuration: 'Ansible',
-      cicd: 'GitHub Actions',
-      api: 'Node.js + Express',
-      monitoring: 'Prometheus + Grafana'
-    },
-    environments: {
-      staging: 'http://35.233.124.20:3000',
-      production: 'http://34.38.164.180:3000'
-    }
+    version: '1.0.0'
   });
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log('🚀 Mobile API CI/CD Pipeline - Omarovic42');
-  console.log(`📱 Server running on port ${port}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔢 Version: ${process.env.VERSION || '1.0.0'}`);
-  console.log(`⏰ Started at: ${new Date().toISOString()}`);
-  console.log('🎯 Ready for CI/CD deployment!');
-});
+// Only start the server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log('🚀 Mobile API CI/CD Pipeline - Omarovic42');
+    console.log('📱 Server running on port ' + port);
+    console.log('🌍 Environment: ' + (process.env.NODE_ENV || 'development'));
+    console.log('🔢 Version: 1.0.0');
+    console.log('⏰ Started at: ' + new Date().toISOString());
+    console.log('🎯 Ready for CI/CD deployment!');
+  });
+}
 
 module.exports = app;

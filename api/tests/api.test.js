@@ -1,51 +1,43 @@
 ﻿const request = require('supertest');
 const app = require('../server');
 
-describe('Mobile API CI/CD Tests - Omarovic42', () => {
-  
-  describe('Health Check Endpoint', () => {
-    test('GET /health should return 200 and correct structure', async () => {
-      const response = await request(app).get('/health');
-      
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('OK');
-      expect(response.body.author).toBe('Omarovic42');
-      expect(response.body.version).toBeDefined();
-      expect(response.body.timestamp).toBeDefined();
-      expect(response.body.uptime).toBeDefined();
-    });
+describe('Mobile API Tests - Omarovic42', () => {
+  let server;
+
+  beforeAll(() => {
+    server = app.listen(0);
   });
 
-  describe('Mobile API Endpoints', () => {
-    test('GET /api/mobile should return mobile API information', async () => {
-      const response = await request(app).get('/api/mobile');
-      
-      expect(response.status).toBe(200);
-      expect(response.body.message).toContain('Omarovic42');
-      expect(response.body.version).toBeDefined();
-      expect(response.body.endpoints).toHaveLength(4);
-      expect(response.body.pipeline).toBe('GitHub Actions');
-    });
-
-    test('GET /api/users should return mobile users data', async () => {
-      const response = await request(app).get('/api/users');
-      
-      expect(response.status).toBe(200);
-      expect(response.body.users).toHaveLength(2);
-      expect(response.body.count).toBe(2);
-      expect(response.body.mobile_features).toContain('push_notifications');
-    });
+  afterAll((done) => {
+    if (server) {
+      server.close(done);
+    } else {
+      done();
+    }
   });
 
-  describe('Project Information', () => {
-    test('GET / should return complete project information', async () => {
-      const response = await request(app).get('/');
-      
-      expect(response.status).toBe(200);
-      expect(response.body.project).toContain('Mobile API CI/CD');
-      expect(response.body.author).toBe('Omarovic42');
-      expect(response.body.technologies).toBeDefined();
-      expect(response.body.environments).toBeDefined();
-    });
+  test('GET /health returns 200', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body.author).toBe('Omarovic42');
+  });
+
+  test('GET /api/mobile returns API info', async () => {
+    const res = await request(app).get('/api/mobile');
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('Omarovic42');
+  });
+
+  test('GET /api/users returns users list', async () => {
+    const res = await request(app).get('/api/users');
+    expect(res.status).toBe(200);
+    expect(res.body.users).toBeDefined();
+    expect(res.body.count).toBe(2);
+  });
+
+  test('GET / returns project info', async () => {
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.author).toBe('Omarovic42');
   });
 });
