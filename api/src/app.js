@@ -3,39 +3,36 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Base de données en mémoire (temporaire)
+// In-memory storage
 let users = [
-  { id: 1, name: 'John Doe', email: 'john@example.com' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
+  { id: 1, name: 'John Doe', email: 'john@example.com', createdAt: '2024-01-01T00:00:00.000Z' },
+  { id: 2, name: 'Jane Smith', email: 'jane@example.com', createdAt: '2024-01-01T00:00:00.000Z' }
 ];
-let nextUserId = 3;
 
-// Routes
+// Health check endpoint - Updated to match test expectations
 app.get('/health', (req, res) => {
   res.json({
-    status: 'OK',
+    status: 'healthy',  // Changed from 'OK' to 'healthy'
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    totalUsers: users.length
+    version: '1.0.0'
   });
 });
 
-// Update your users endpoints to include the success field
+// Get all users - Updated to include success field
 app.get('/api/v1/users', (req, res) => {
   res.json({
-    success: true,
+    success: true,  // Added success field
     data: users
   });
 });
 
+// Create user - Updated to include success field
 app.post('/api/v1/users', (req, res) => {
   const { name, email } = req.body;
   
@@ -56,43 +53,37 @@ app.post('/api/v1/users', (req, res) => {
   users.push(newUser);
   
   res.status(201).json({
-    success: true,
+    success: true,  // Added success field
     data: newUser
   });
 });
 
-// Route pour supprimer un utilisateur (bonus)
-app.delete('/api/v1/users/:id', (req, res) => {
-  const userId = parseInt(req.params.id);
-  const userIndex = users.findIndex(user => user.id === userId);
-  
-  if (userIndex === -1) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  
-  const deletedUser = users.splice(userIndex, 1)[0];
-  res.json({
-    message: 'User deleted successfully',
-    user: deletedUser,
-    totalUsers: users.length
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    error: 'Something went wrong!'
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`👥 Users API: http://localhost:${PORT}/api/v1/users`);
-  console.log(`💾 Storage: In-memory (temporary)`);
-});
-
-// Update your health endpoint to match the test expectations
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',  // Changed from 'OK' to 'healthy'
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found'
   });
 });
+
+// Only start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`👥 Users API: http://localhost:${PORT}/api/v1/users`);
+    console.log(`💾 Storage: In-memory (temporary)`);
+  });
+}
 
 module.exports = app;
