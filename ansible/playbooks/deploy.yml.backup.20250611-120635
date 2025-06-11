@@ -1,0 +1,90 @@
+﻿---
+- name: Deploy Mobile API
+  hosts: all
+  become: yes
+  vars:
+    api_version: "{{ lookup('env', 'API_VERSION') | default('latest', true) }}"
+    
+  tasks:
+    - name: Update system packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - nginx
+          - ufw
+        state: present
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Create API directory
+      file:
+        path: /opt/mobile-api
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy docker-compose.yml
+      template:
+        src: docker-compose.yml.j2
+        dest: /opt/mobile-api/docker-compose.yml
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Pull and start API containers
+      community.docker.docker_compose_v2:
+        project_src: /opt/mobile-api
+        state: present
+        pull: always
+
+    - name: Configure Nginx
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/mobile-api
+        backup: yes
+      notify: reload nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/mobile-api
+        dest: /etc/nginx/sites-enabled/mobile-api
+        state: link
+      notify: reload nginx
+
+    - name: Configure firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - '22'
+        - '80'
+        - '443'
+        - '3000'
+
+    - name: Enable firewall
+      ufw:
+        state: enabled
+
+  handlers:
+    - name: reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
