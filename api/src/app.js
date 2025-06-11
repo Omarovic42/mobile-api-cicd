@@ -28,39 +28,36 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Update your users endpoints to include the success field
 app.get('/api/v1/users', (req, res) => {
   res.json({
-    users: users,
-    total: users.length,
-    timestamp: new Date().toISOString()
+    success: true,
+    data: users
   });
 });
 
 app.post('/api/v1/users', (req, res) => {
   const { name, email } = req.body;
   
-  // Validation basique
   if (!name || !email) {
     return res.status(400).json({
+      success: false,
       error: 'Name and email are required'
     });
   }
   
-  // Créer le nouvel utilisateur
   const newUser = {
-    id: nextUserId++,
+    id: users.length + 1,
     name,
     email,
-    created: new Date().toISOString()
+    createdAt: new Date().toISOString()
   };
   
-  // Ajouter à la "base de données" en mémoire
   users.push(newUser);
   
   res.status(201).json({
-    message: 'User created successfully',
-    user: newUser,
-    totalUsers: users.length
+    success: true,
+    data: newUser
   });
 });
 
