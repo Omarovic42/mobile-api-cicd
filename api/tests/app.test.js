@@ -2,6 +2,20 @@ const request = require('supertest');
 const app = require('../src/app');
 
 describe('API Tests', () => {
+  let server;
+
+  beforeAll(() => {
+    server = app.listen(0); // Use port 0 for testing
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  // ... rest of your tests
+});
+
+describe('API Tests', () => {
   describe('GET /health', () => {
     it('should return healthy status', async () => {
       const response = await request(app)
