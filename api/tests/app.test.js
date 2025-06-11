@@ -5,17 +5,19 @@ describe('API Tests', () => {
   let server;
 
   beforeAll(() => {
-    server = app.listen(0); // Use port 0 for testing
+    // Start server on random port for testing
+    server = app.listen(0);
   });
 
   afterAll((done) => {
-    server.close(done);
+    // Properly close server after tests
+    if (server) {
+      server.close(done);
+    } else {
+      done();
+    }
   });
 
-  // ... rest of your tests
-});
-
-describe('API Tests', () => {
   describe('GET /health', () => {
     it('should return healthy status', async () => {
       const response = await request(app)
@@ -54,4 +56,4 @@ describe('API Tests', () => {
       expect(response.body.data.name).toBe(newUser.name);
     });
   });
-}); 
+});
