@@ -28,8 +28,8 @@ app.get('/api/mobile', (req, res) => {
 app.get('/api/users', (req, res) => {
   res.json({
     users: [
-      { id: 1, name: 'User 1', mobile: true },
-      { id: 2, name: 'User 2', mobile: true }
+      { id: 1, name: 'John Doe' },
+      { id: 2, name: 'Jane Smith' }
     ],
     count: 2
   });
