@@ -86,23 +86,14 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H 35.233.124.20 >> ~/.ssh/known_hosts
         
-    - name: Setup Python and Ansible
+    - name: Test Docker version and commands on staging
       run: |
-        sudo apt-get update
-        sudo apt-get install -y python3 python3-pip docker-compose
-        python3 -m pip install --upgrade pip
-        python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
-        ansible-galaxy collection install community.docker:3.4.0 --force
-        
-    - name: Test SSH connection and permissions
-      run: |
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'id && echo "Current user permissions:" && groups'
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Home directory:" && ls -la ~/'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Docker version:" && docker --version'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Available Docker commands:" && docker --help | grep -E "compose|container"'
         
     - name: Deploy to Staging via SSH
       run: |
-        # Create deploy script
+        # Create deploy script for modern docker compose
         cat > deploy.sh <<'EOF'
         #!/bin/bash
         set -e
@@ -134,14 +125,33 @@ jobs:
           api_data:
         EOL
 
-        # Pull and start containers
+        # Pull and start containers using 'docker compose' instead of 'docker-compose'
         cd $TARGET_DIR
-        docker-compose pull
-        docker-compose up -d
+        
+        # Try docker compose first (modern approach)
+        if docker compose version 2>/dev/null; then
+            echo "Using docker compose plugin..."
+            docker compose pull
+            docker compose up -d
+        # Fallback to manual docker run if docker compose not available
+        else
+            echo "Docker compose not available, using docker run directly..."
+            docker pull ${IMAGE}
+            # Stop and remove any existing container
+            docker rm -f mobile-api 2>/dev/null || true
+            # Run the new container
+            docker run -d --name mobile-api \
+                -p 3000:3000 \
+                -e NODE_ENV=production \
+                -e PORT=3000 \
+                --restart always \
+                ${IMAGE}
+        fi
         
         # Verify container is running
         echo "Containers running:"
         docker ps
+        echo "Deployment completed successfully!"
         EOF
 
         # Make script executable and copy to server
@@ -171,15 +181,14 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H 34.38.164.180 >> ~/.ssh/known_hosts
         
-    - name: Test SSH connection to production
+    - name: Test Docker version and commands on production
       run: |
-        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
-        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'id && echo "Current user permissions:" && groups'
-        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "Home directory:" && ls -la ~/'
+        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "Docker version:" && docker --version'
+        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "Available Docker commands:" && docker --help | grep -E "compose|container"'
         
     - name: Deploy to Production via SSH
       run: |
-        # Create deploy script
+        # Create deploy script for modern docker compose
         cat > deploy.sh <<'EOF'
         #!/bin/bash
         set -e
@@ -211,14 +220,33 @@ jobs:
           api_data:
         EOL
 
-        # Pull and start containers
+        # Pull and start containers using 'docker compose' instead of 'docker-compose'
         cd $TARGET_DIR
-        docker-compose pull
-        docker-compose up -d
+        
+        # Try docker compose first (modern approach)
+        if docker compose version 2>/dev/null; then
+            echo "Using docker compose plugin..."
+            docker compose pull
+            docker compose up -d
+        # Fallback to manual docker run if docker compose not available
+        else
+            echo "Docker compose not available, using docker run directly..."
+            docker pull ${IMAGE}
+            # Stop and remove any existing container
+            docker rm -f mobile-api 2>/dev/null || true
+            # Run the new container
+            docker run -d --name mobile-api \
+                -p 3000:3000 \
+                -e NODE_ENV=production \
+                -e PORT=3000 \
+                --restart always \
+                ${IMAGE}
+        fi
         
         # Verify container is running
         echo "Containers running:"
         docker ps
+        echo "Deployment completed successfully!"
         EOF
 
         # Make script executable and copy to server
