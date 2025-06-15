@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "jest --coverage",
+ "test:ci": "jest --coverage --ci",
     "lint": "echo Linting complete",
     "build": "echo Build complete"
   },
