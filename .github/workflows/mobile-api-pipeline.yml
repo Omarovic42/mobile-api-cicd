@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v5 (Diagnostic)
+name: 📱 Mobile API CI/CD - Omarovic42 v6 (Advanced SSH Setup)
 
 on:
   push:
@@ -67,39 +67,106 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Job de diagnostic pour afficher des informations utiles
-  diagnostics:
+  deploy-staging:
     needs: [test, build]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
     steps:
-    - name: Display SSH Debug Information
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH environment
       run: |
-        echo "=== SSH Client Version ==="
-        ssh -V
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "StrictHostKeyChecking no" > ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/id_rsa
+        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
         
-        echo "=== Available SSH Keys ==="
-        ls -la ~/.ssh || echo "No ~/.ssh directory found"
-        
-        echo "=== Current User ==="
-        whoami
-        
-        echo "=== SSH Config ==="
-        cat ~/.ssh/config || echo "No SSH config file found"
-        
-    - name: Check if SSH_PRIVATE_KEY Secret is Set
+    - name: Add staging host to known_hosts
       run: |
-        if [ "${{ secrets.SSH_PRIVATE_KEY }}" != "" ]; then
-          echo "SSH_PRIVATE_KEY secret is set"
-          # Print first 10 characters to verify it's in the correct format
-          echo "First few characters: ${${{ secrets.SSH_PRIVATE_KEY }}:0:10}..."
-        else
-          echo "SSH_PRIVATE_KEY secret is NOT set"
-        fi
+        ssh-keyscan -H 35.233.124.20 >> ~/.ssh/known_hosts
         
-    - name: Check if PROD_SSH_PRIVATE_KEY Secret is Set
+    - name: Test SSH connectivity to staging with debug
       run: |
-        if [ "${{ secrets.PROD_SSH_PRIVATE_KEY }}" != "" ]; then
-          echo "PROD_SSH_PRIVATE_KEY secret is set"
-        else
-          echo "PROD_SSH_PRIVATE_KEY secret is NOT set"
-        fi
+        echo "Testing SSH connection with debug output..."
+        ssh -vvv -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection test"'
+        
+    - name: Deploy to Staging via SSH
+      if: false  # Temporarily disabled until SSH issues are resolved
+      run: |
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="$HOME/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+        cd $TARGET_DIR
+        
+        echo "Using direct docker run command..."
+        docker pull ${IMAGE}
+        
+        # Stop and remove any existing container
+        docker stop mobile-api 2>/dev/null || true
+        docker rm mobile-api 2>/dev/null || true
+        
+        # Run the new container
+        docker run -d --name mobile-api \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            --restart always \
+            ${IMAGE}
+        
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp deploy.sh chelsea42_om@35.233.124.20:~/deploy.sh
+        
+        # Execute script on server
+        ssh chelsea42_om@35.233.124.20 'bash ~/deploy.sh'
+
+  deploy-production:
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: false  # Temporarily disabled until staging deployment works
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH environment
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "StrictHostKeyChecking no" > ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/id_rsa
+        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+        
+    - name: Add production host to known_hosts
+      run: |
+        ssh-keyscan -H 34.38.164.180 >> ~/.ssh/known_hosts
+        
+    - name: Test SSH connectivity to production with debug
+      run: |
+        echo "Testing SSH connection with debug output..."
+        ssh -vvv -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection test"'
