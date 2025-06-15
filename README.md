@@ -159,15 +159,15 @@ Des alertes sont configurées pour surveiller :
 
 ### Déploiement
 
-La documentation complète du processus de déploiement est disponible dans [docs/deployment.md](https://github.com/copilot/c/docs/deployment.md).
+La documentation complète du processus de déploiement est disponible dans [docs/deployment.md](docs/deployment.md).
 
 ### Rollback
 
-La procédure de rollback est détaillée dans [docs/rollback.md](https://github.com/copilot/c/docs/rollback.md).
+La procédure de rollback est détaillée dans [docs/rollback.md](docs/rollback.md).
 
 ### GitFlow
 
-Notre stratégie de branchement est documentée dans [docs/gitflow.md](https://github.com/copilot/c/docs/gitflow.md).
+Notre stratégie de branchement est documentée dans [docs/gitflow.md](docs/gitflow.md).
 
 ### Structure du dépôt Git
 ----------------------
@@ -230,7 +230,7 @@ mobile-api-cicd/
 ### Captures d'écran
 ----------------
 
-Pour des captures d'écran du projet en action, voir le répertoire [images/](https://github.com/copilot/c/images/) :
+Pour des captures d'écran du projet en action, voir le répertoire [images/](images/) :
 
 -   Exécution du pipeline CI/CD
 -   Interface de staging et production
