@@ -92,9 +92,9 @@ jobs:
         sudo apt-get install -y python3 python3-pip
         pip3 install ansible==8.7.0 ansible-core==2.15.13
         
-- name: Test SSH connection to staging
-  run: |
-    ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
+    - name: Test SSH connection to staging
+      run: |
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
         
     - name: Deploy to Staging
       run: |
@@ -129,9 +129,9 @@ jobs:
         sudo apt-get install -y python3 python3-pip
         pip3 install ansible==8.7.0 ansible-core==2.15.13
         
-- name: Test SSH connection to production
-  run: |
-    ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
+    - name: Test SSH connection to production
+      run: |
+        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
         
     - name: Deploy to Production
       run: |
