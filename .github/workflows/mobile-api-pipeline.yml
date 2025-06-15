@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v2
+name: ðŸ“± Mobile API CI/CD - Omarovic42 v2
 
 on:
   push:
@@ -94,9 +94,11 @@ jobs:
         python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
         ansible-galaxy collection install community.docker:3.4.0 --force
         
-    - name: Test SSH connection to staging
+        - name: Test SSH connection and permissions
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'id && echo "Current user permissions:" && groups && echo "Docker access:" && docker ps || echo "No Docker access"'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Directory permissions:" && mkdir -p /opt/test-dir || echo "Cannot create directory in /opt"'
         
     - name: Debug environment
       run: |

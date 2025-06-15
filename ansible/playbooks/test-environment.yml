@@ -1,8 +1,8 @@
 ---
 - name: Test Connectivity and Environment
   hosts: all
-  become: yes
   gather_facts: yes
+  become: no
   
   tasks:
     - name: Display Ansible facts
@@ -34,17 +34,3 @@
     - name: Display docker-compose path
       debug:
         var: compose_path.stdout
-        
-    - name: Test directory permissions
-      file:
-        path: /opt/test-dir
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
-      register: dir_test
-      ignore_errors: true
-      
-    - name: Display directory test results
-      debug:
-        var: dir_test

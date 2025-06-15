@@ -1,91 +1,42 @@
 ---
 - name: Deploy Mobile API
   hosts: all
-  become: yes
+  become: no
   vars:
     api_version: "{{ lookup('env', 'API_VERSION') | default('latest', true) }}"
 
   tasks:
-    - name: Update system packages
-      apt:
-        upgrade: yes
-        update_cache: yes
-        cache_valid_time: 86400
-
-    - name: Install required packages
-      apt:
-        name:
-          - docker.io
-          - docker-compose
-          - nginx
-          - ufw
-        state: present
-
-    - name: Start and enable Docker
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
-
+    - name: Check if user can run docker without sudo
+      command: docker ps
+      register: docker_check
+      ignore_errors: true
+      
+    - name: Display Docker permissions status
+      debug:
+        var: docker_check
+        
     - name: Create API directory
       file:
         path: /opt/mobile-api
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0755'
-
+      register: dir_result
+      ignore_errors: true
+        
+    - name: Display directory creation result
+      debug:
+        var: dir_result
+        
     - name: Copy docker-compose.yml
       template:
         src: templates/docker-compose.yml.j2
         dest: /opt/mobile-api/docker-compose.yml
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
         mode: '0644'
-
-    - name: Pull and start API containers
+      when: dir_result is succeeded
+      
+    - name: Run docker-compose with docker command
       shell: |
         cd /opt/mobile-api
         docker-compose pull
         docker-compose up -d
-      become: yes
-
-    - name: Configure Nginx
-      template:
-        src: templates/nginx.conf.j2
-        dest: /etc/nginx/sites-available/mobile-api
-        backup: yes
-      notify: reload nginx
-
-    - name: Enable Nginx site
-      file:
-        src: /etc/nginx/sites-available/mobile-api
-        dest: /etc/nginx/sites-enabled/mobile-api
-        state: link
-      notify: reload nginx
-
-    - name: Configure firewall
-      ufw:
-        rule: allow
-        port: "{{ item }}"
-      loop:
-        - '22'
-        - '80'
-        - '443'
-        - '3000'
-
-    - name: Enable firewall
-      ufw:
-        state: enabled
-
-  handlers:
-    - name: reload nginx
-      systemd:
-        name: nginx
-        state: reloaded
+      when: docker_check is succeeded
