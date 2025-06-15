@@ -94,7 +94,7 @@ jobs:
         
     - name: Test SSH connection to staging
       run: |
-        ssh -o ConnectTimeout=10 omarovic42@35.233.124.20 'echo "SSH connection successful to staging"'
+ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
         
     - name: Deploy to Staging
       run: |
@@ -131,7 +131,7 @@ jobs:
         
     - name: Test SSH connection to production
       run: |
-        ssh -o ConnectTimeout=10 omarovic42@34.38.164.180 'echo "SSH connection successful to production"'
+ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
         
     - name: Deploy to Production
       run: |
