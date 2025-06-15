@@ -1,51 +1,164 @@
-# Mobile API CI/CD - Omarovic42
+﻿# Mobile API CI/CD Pipeline
 
 ## Présentation du projet
 
-Infrastructure complète CI/CD pour une API mobile avec déploiement automatisé.
+### Contexte
+Ce projet met en place une infrastructure complète de CI/CD pour une API destinée à une application mobile. L'API est développée en Node.js et expose des endpoints RESTful qui seront consommés par l'application mobile.
 
-**Auteur:** Omarovic42  
-**Date:** 2025-06-11 07:31:56 UTC  
-**Repository:** https://github.com/Omarovic42/mobile-api-cicd  
+### Technologies utilisées
+- **Infrastructure**: Google Cloud Platform (GCP)
+- **IaC**: Terraform
+- **Configuration**: Ansible
+- **Conteneurisation**: Docker
+- **CI/CD**: GitHub Actions
+- **Registry**: GitHub Container Registry (ghcr.io)
+- **Monitoring**: Prometheus, Grafana, ELK Stack
+- **Langages**: Node.js (API), Shell/PowerShell (scripts)
 
-## Technologies utilisées
+## Mise en place du GitFlow
 
-- **Infrastructure:** Terraform + GCP
-- **Configuration:** Ansible  
-- **CI/CD:** GitHub Actions
-- **API:** Node.js + Express
-- **Base de données:** PostgreSQL
-- **Monitoring:** Logs + Health checks
+Notre workflow Git suit le modèle GitFlow avec les branches suivantes:
 
-## GitFlow
-main (production) ← develop ← feature/initial-setup
+- \main\ : Code en production, toujours stable
+- \develop\ : Branche d'intégration pour le développement
+- \eature/*\ : Branches pour les nouvelles fonctionnalités
+- \elease/*\ : Branches pour la préparation des versions
+- \hotfix/*\ : Branches pour les correctifs urgents
 
+Pour plus de détails sur notre implémentation de GitFlow, consultez [docs/gitflow.md](docs/gitflow.md).
 
 ## Pipeline CI/CD
 
-1. **Lint** - Vérification du code
-2. **Test** - Tests automatisés  
-3. **Build** - Construction de l'application
-4. **Deploy Staging** - Déploiement de test
-5. **Deploy Production** - Déploiement en production
-6. **Rollback** - Retour arrière en cas d'échec
+Notre pipeline CI/CD est implémenté avec GitHub Actions et comprend les étapes suivantes :
 
-## Environnements
+### 1. Test
+- Exécution des tests unitaires et d'intégration
+- Analyse statique du code
 
-- **Staging:** http://35.233.124.20:3000/
-- **Production:** http://34.38.164.180:3000/
+### 2. Build
+- Construction de l'image Docker
+- Tag de l'image avec SHA du commit et latest
 
-## Endpoints API
+### 3. Deploy to Staging
+- Déploiement sur l'environnement de staging (35.233.124.20)
+- Tests de l'API déployée
 
-- `GET /health` - Health check
-- `GET /api/mobile` - API principale  
-- `GET /api/users` - Gestion utilisateurs
+### 4. Deploy to Production
+- Déploiement sur l'environnement de production (34.38.164.180) après approbation
 
-## Déploiement
+### 5. Snapshots et Sauvegardes
+- Création automatique de snapshots quotidiens des machines virtuelles
+- Rétention des snapshots pendant 7 jours
 
-```bash
-git clone https://github.com/Omarovic42/mobile-api-cicd.git
-cd mobile-api-cicd
-cd terraform && terraform init && terraform apply
-cd ../ansible && ansible-playbook deploy.yml
-cd ../api && npm install && npm start
+### Configuration du workflow
+
+Le workflow est défini dans [.github/workflows/ci-cd-complete.yml](.github/workflows/ci-cd-complete.yml)
+
+## Packaging et Versionnement
+
+### Versionnement sémantique (SemVer)
+
+Nous utilisons le versionnement sémantique suivant le format \X.Y.Z\ :
+- **X** : Version majeure (changements incompatibles avec l'API)
+- **Y** : Version mineure (fonctionnalités rétrocompatibles)
+- **Z** : Version de correctif (corrections de bugs rétrocompatibles)
+
+### Tags Git
+
+Les versions sont créées avec des tags Git :
+
+\\\powershell
+git tag -a v1.0.0 -m "Version 1.0.0"
+git push origin v1.0.0
+\\\
+
+### Stockage des artefacts
+
+Les images Docker sont stockées dans GitHub Container Registry (ghcr.io) avec des tags correspondant aux versions SemVer et aux SHA des commits.
+
+## Gestion des secrets et environnements
+
+### Méthode utilisée
+Nous utilisons GitHub Secrets pour stocker de manière sécurisée toutes les informations sensibles :
+- SSH_PRIVATE_KEY : Clé SSH pour le déploiement
+- GITHUB_TOKEN : Généré automatiquement pour l'authentification
+
+### Séparation des environnements
+Les environnements staging et production sont strictement séparés :
+- Différentes machines virtuelles
+- Workflow avec approbation requise pour la production
+- Variables d'environnement spécifiques à chaque environnement
+
+## Mécanismes de sauvegarde et rollback
+
+### Snapshots automatiques
+Des snapshots automatiques sont configurés via Terraform :
+- Fréquence : Quotidienne à 04:00 UTC
+- Rétention : 7 jours
+- Couverture : Serveurs de staging et de production
+
+### Procédure de rollback
+En cas de problème avec une nouvelle version, notre solution permet un retour rapide à une version stable :
+1. Via les scripts de rollback dans le répertoire \ollback/\
+2. En utilisant les snapshots GCP pour restaurer un état antérieur complet
+
+Pour plus de détails, consultez [docs/rollback.md](docs/rollback.md).
+
+## Monitoring et supervision
+
+Notre stack de monitoring comprend :
+- **Prometheus** : Collecte de métriques
+- **Grafana** : Visualisation et dashboards
+- **ELK Stack** : Centralisation et analyse des logs
+
+Des alertes sont configurées pour surveiller :
+- Disponibilité du service
+- Utilisation des ressources
+- Performances de l'API
+- Erreurs applicatives
+
+## Procédures documentées
+
+### Déploiement
+La documentation complète du processus de déploiement est disponible dans [docs/deployment.md](docs/deployment.md).
+
+### Rollback
+La procédure de rollback est détaillée dans [docs/rollback.md](docs/rollback.md).
+
+### GitFlow
+Notre stratégie de branchement est documentée dans [docs/gitflow.md](docs/gitflow.md).
+
+## Structure du dépôt Git
+
+\\\
+mobile-api-cicd/
+├── api/                      # Code de l'API Node.js
+│   ├── Dockerfile            # Conteneurisation de l'API
+│   ├── server.js             # Point d'entrée de l'API
+│   ├── package.json          # Dépendances Node.js
+│   └── ...                   # Autres fichiers de l'API
+├── terraform/                # Scripts Terraform pour l'infrastructure
+│   ├── main.tf               # Ressources principales
+│   ├── variables.tf          # Définition des variables
+│   └── outputs.tf            # Sorties Terraform
+├── ansible/                  # Configuration Ansible des serveurs
+│   ├── playbook.yml          # Playbook principal
+│   ├── inventory.yml         # Inventaire des serveurs
+│   └── ...                   # Rôles et tâches Ansible
+├── .github/workflows/        # Workflows GitHub Actions
+│   └── ci-cd-complete.yml    # Pipeline CI/CD complet
+├── monitoring/               # Configuration du monitoring
+│   ├── docker-compose.yml    # Stack de monitoring
+│   └── prometheus.yml        # Configuration Prometheus
+├── rollback/                 # Scripts de rollback
+│   ├── rollback.sh           # Script de rollback (Linux)
+│   └── rollback.ps1          # Script de rollback (Windows)
+├── docs/                     # Documentation supplémentaire
+│   ├── deployment.md         # Guide de déploiement
+│   ├── rollback.md           # Procédures de rollback
+│   └── gitflow.md            # Documentation GitFlow
+├── images/                   # Images pour la documentation
+└── README.md                 # Documentation principale
+\\\
+
+Dernière mise à jour: 2025-06-15 18:07:03 par Omarovic42
