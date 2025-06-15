@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v16 (Exact Working Config)
+name: 📱 Mobile API CI/CD - Omarovic42 v22 (Complete Pipeline)
 
 on:
   push:
@@ -68,7 +68,7 @@ jobs:
         cache-to: type=gha,mode=max
 
   deploy-staging:
-    needs: [test, build]
+    needs: [build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -128,3 +128,66 @@ jobs:
 
         # Execute script on server
         ssh chelsea42_om@35.233.124.20 'bash ~/deploy.sh'
+
+  deploy-production:
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Key
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+    - name: Add production host to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H 34.38.164.180 >> ~/.ssh/known_hosts
+
+    - name: Deploy to Production via SSH
+      run: |
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="$HOME/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+        cd $TARGET_DIR
+
+        echo "Using direct docker run command..."
+        docker pull ${IMAGE}
+
+        # Stop and remove any existing container
+        docker stop mobile-api 2>/dev/null || true
+        docker rm mobile-api 2>/dev/null || true
+
+        # Run the new container
+        docker run -d --name mobile-api \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            --restart always \
+            ${IMAGE}
+
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
+        echo "Deployment completed successfully!"
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp deploy.sh chelsea42_om@34.38.164.180:~/deploy.sh
+
+        # Execute script on server
+        ssh chelsea42_om@34.38.164.180 'bash ~/deploy.sh'
