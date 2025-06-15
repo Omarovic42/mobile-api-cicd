@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v11 (Staging First)
+name: 📱 Mobile API CI/CD - Omarovic42 v16 (Exact Working Config)
 
 on:
   push:
@@ -13,23 +13,23 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: api/package-lock.json
-        
+
     - name: Install dependencies
       run: |
         cd api
         npm ci
-        
+
     - name: Run tests with proper permissions
       run: |
         cd api
@@ -41,21 +41,21 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
+
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -71,21 +71,21 @@ jobs:
     needs: [test, build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup SSH Key
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
+
     - name: Add staging host to known_hosts
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H 35.233.124.20 >> ~/.ssh/known_hosts
-        
+
     - name: Deploy to Staging via SSH
       run: |
         # Create deploy script
@@ -100,14 +100,14 @@ jobs:
         # Create directory if needed
         mkdir -p $TARGET_DIR
         cd $TARGET_DIR
-        
+
         echo "Using direct docker run command..."
         docker pull ${IMAGE}
-        
+
         # Stop and remove any existing container
         docker stop mobile-api 2>/dev/null || true
         docker rm mobile-api 2>/dev/null || true
-        
+
         # Run the new container
         docker run -d --name mobile-api \
             -p 3000:3000 \
@@ -115,7 +115,7 @@ jobs:
             -e PORT=3000 \
             --restart always \
             ${IMAGE}
-        
+
         # Verify container is running
         echo "Containers running:"
         docker ps
@@ -125,6 +125,6 @@ jobs:
         # Make script executable and copy to server
         chmod +x deploy.sh
         scp deploy.sh chelsea42_om@35.233.124.20:~/deploy.sh
-        
+
         # Execute script on server
         ssh chelsea42_om@35.233.124.20 'bash ~/deploy.sh'
