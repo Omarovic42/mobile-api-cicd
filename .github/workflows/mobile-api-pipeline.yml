@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v22 (Complete Pipeline)
+name: 📱 Mobile API CI/CD - Omarovic42 v25 (Complete Pipeline)
 
 on:
   push:
@@ -142,7 +142,7 @@ jobs:
     - name: Setup SSH Key
       uses: webfactory/ssh-agent@v0.7.0
       with:
-        ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Add production host to known_hosts
       run: |
