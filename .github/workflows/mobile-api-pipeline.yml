@@ -97,8 +97,8 @@ jobs:
     - name: Test SSH connection and permissions
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'id && echo "Current user permissions:" && groups && echo "Docker access:" && docker ps || echo "No Docker access"'
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Directory permissions:" && mkdir -p /opt/test-dir || echo "Cannot create directory in /opt"'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'id && echo "Current user permissions:" && groups'
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Home directory:" && ls -la ~/'
         
     - name: Deploy to Staging via SSH
       run: |
@@ -109,7 +109,7 @@ jobs:
 
         # Variables
         IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
-        TARGET_DIR="/opt/mobile-api"
+        TARGET_DIR="$HOME/mobile-api"
 
         # Create directory if needed
         mkdir -p $TARGET_DIR
@@ -138,6 +138,10 @@ jobs:
         cd $TARGET_DIR
         docker-compose pull
         docker-compose up -d
+        
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
         EOF
 
         # Make script executable and copy to server
@@ -167,17 +171,11 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H 34.38.164.180 >> ~/.ssh/known_hosts
         
-    - name: Setup Python and Ansible
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3 python3-pip docker-compose
-        python3 -m pip install --upgrade pip
-        python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
-        ansible-galaxy collection install community.docker:3.4.0 --force
-        
     - name: Test SSH connection to production
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
+        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'id && echo "Current user permissions:" && groups'
+        ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "Home directory:" && ls -la ~/'
         
     - name: Deploy to Production via SSH
       run: |
@@ -188,7 +186,7 @@ jobs:
 
         # Variables
         IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
-        TARGET_DIR="/opt/mobile-api"
+        TARGET_DIR="$HOME/mobile-api"
 
         # Create directory if needed
         mkdir -p $TARGET_DIR
@@ -217,6 +215,10 @@ jobs:
         cd $TARGET_DIR
         docker-compose pull
         docker-compose up -d
+        
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
         EOF
 
         # Make script executable and copy to server
