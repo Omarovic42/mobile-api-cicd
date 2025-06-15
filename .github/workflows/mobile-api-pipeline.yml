@@ -1,4 +1,4 @@
-name: ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± Mobile API CI/CD - Omarovic42 v2
+name: 📱 Mobile API CI/CD - Omarovic42 v2
 
 on:
   push:
@@ -96,42 +96,30 @@ jobs:
         
     - name: Test SSH connection to staging
       run: |
-        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"
-
+        ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
+        
+    - name: Debug environment
+      run: |
+        pwd
+        ls -la
+        ls -la ansible/
+        ls -la ansible/playbooks/
+        ls -la ansible/playbooks/templates/
+        ls -la ansible/inventory/
+        
     - name: Test environment diagnostic
       run: |
         cd ansible
         ansible-playbook -i inventory/hosts.yml playbooks/test-environment.yml --limit staging -vvv
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
-
+        
     - name: Deploy to Staging
       run: |
         cd ansible
         ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit staging -e "docker_image=ghcr.io/omarovic42/mobile-api:${{ github.sha }}" -vvv
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
-'
-        
-        - name: Debug environment and configurations
-      run: |
-        echo "Current directory structure:"
-        pwd
-        ls -la
-        echo "Ansible directory structure:"
-        ls -la ansible/
-        ls -la ansible/playbooks/
-        ls -la ansible/playbooks/templates/
-        ls -la ansible/inventory/
-        echo "Inventory content:"
-        cat ansible/inventory/hosts.yml
-        echo "Playbook content:"
-        cat ansible/playbooks/deploy.yml
-        echo "Template content:"
-        cat ansible/playbooks/templates/docker-compose.yml.j2
-        cat ansible/playbooks/templates/nginx.conf.j2
-
-    
 
   deploy-production:
     needs: [test, build, deploy-staging]
@@ -165,9 +153,16 @@ jobs:
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
         
+    - name: Test environment diagnostic
+      run: |
+        cd ansible
+        ansible-playbook -i inventory/hosts.yml playbooks/test-environment.yml --limit production -vvv
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: False
+        
     - name: Deploy to Production
       run: |
         cd ansible
-        ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit production -e "docker_image=ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit production -e "docker_image=ghcr.io/omarovic42/mobile-api:${{ github.sha }}" -vvv
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
