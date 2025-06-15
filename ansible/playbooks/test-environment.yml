@@ -1,0 +1,50 @@
+---
+- name: Test Connectivity and Environment
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Display Ansible facts
+      debug:
+        var: ansible_distribution
+        
+    - name: Check Python version
+      command: python3 --version
+      register: python_version
+      
+    - name: Display Python version
+      debug:
+        var: python_version.stdout
+        
+    - name: Check if docker is installed
+      command: which docker
+      register: docker_path
+      ignore_errors: true
+      
+    - name: Display Docker path
+      debug:
+        var: docker_path.stdout
+        
+    - name: Check if docker-compose is installed
+      command: which docker-compose
+      register: compose_path
+      ignore_errors: true
+      
+    - name: Display docker-compose path
+      debug:
+        var: compose_path.stdout
+        
+    - name: Test directory permissions
+      file:
+        path: /opt/test-dir
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      register: dir_test
+      ignore_errors: true
+      
+    - name: Display directory test results
+      debug:
+        var: dir_test
