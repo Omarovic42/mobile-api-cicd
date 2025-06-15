@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v2
+name: ðŸ“± Mobile API CI/CD - Omarovic42 v2
 
 on:
   push:
@@ -86,12 +86,13 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H 35.233.124.20 >> ~/.ssh/known_hosts
         
-    - name: Setup Python and Ansible
+        - name: Setup Python and Ansible
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-pip
-        pip3 install ansible==8.7.0 ansible-core==2.15.13
-        ansible-galaxy collection install community.docker
+        sudo apt-get install -y python3 python3-pip docker-compose
+        python3 -m pip install --upgrade pip
+        python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
+        ansible-galaxy collection install -r ansible/requirements.yml --force
         
     - name: Test SSH connection to staging
       run: |
@@ -124,12 +125,13 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H 34.38.164.180 >> ~/.ssh/known_hosts
         
-    - name: Setup Python and Ansible
+        - name: Setup Python and Ansible
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-pip
-        pip3 install ansible==8.7.0 ansible-core==2.15.13
-        ansible-galaxy collection install community.docker
+        sudo apt-get install -y python3 python3-pip docker-compose
+        python3 -m pip install --upgrade pip
+        python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
+        ansible-galaxy collection install -r ansible/requirements.yml --force
         
     - name: Test SSH connection to production
       run: |
