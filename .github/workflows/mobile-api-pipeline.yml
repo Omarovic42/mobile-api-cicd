@@ -1,4 +1,4 @@
-name: ðŸ“± Mobile API CI/CD - Omarovic42 v2
+name: 📱 Mobile API CI/CD - Omarovic42 v2
 
 on:
   push:
@@ -94,34 +94,58 @@ jobs:
         python3 -m pip install ansible==8.7.0 ansible-core==2.15.13
         ansible-galaxy collection install community.docker:3.4.0 --force
         
-        - name: Test SSH connection and permissions
+    - name: Test SSH connection and permissions
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection successful to staging"'
         ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'id && echo "Current user permissions:" && groups && echo "Docker access:" && docker ps || echo "No Docker access"'
         ssh -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "Directory permissions:" && mkdir -p /opt/test-dir || echo "Cannot create directory in /opt"'
         
-    - name: Debug environment
+    - name: Deploy to Staging via SSH
       run: |
-        pwd
-        ls -la
-        ls -la ansible/
-        ls -la ansible/playbooks/
-        ls -la ansible/playbooks/templates/
-        ls -la ansible/inventory/
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="/opt/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+
+        # Create docker-compose file
+        cat > $TARGET_DIR/docker-compose.yml <<EOL
+        version: '3'
+
+        services:
+          api:
+            image: ${IMAGE}
+            restart: always
+            ports:
+              - "3000:3000"
+            environment:
+              - NODE_ENV=production
+              - PORT=3000
+            volumes:
+              - api_data:/app/data
+
+        volumes:
+          api_data:
+        EOL
+
+        # Pull and start containers
+        cd $TARGET_DIR
+        docker-compose pull
+        docker-compose up -d
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp -o StrictHostKeyChecking=no deploy.sh chelsea42_om@35.233.124.20:~/deploy.sh
         
-    - name: Test environment diagnostic
-      run: |
-        cd ansible
-        ansible-playbook -i inventory/hosts.yml playbooks/test-environment.yml --limit staging -vvv
-      env:
-        ANSIBLE_HOST_KEY_CHECKING: False
-        
-    - name: Deploy to Staging
-      run: |
-        cd ansible
-        ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit staging -e "docker_image=ghcr.io/omarovic42/mobile-api:${{ github.sha }}" -vvv
-      env:
-        ANSIBLE_HOST_KEY_CHECKING: False
+        # Execute script on server
+        ssh -o StrictHostKeyChecking=no chelsea42_om@35.233.124.20 'bash ~/deploy.sh'
 
   deploy-production:
     needs: [test, build, deploy-staging]
@@ -155,16 +179,49 @@ jobs:
       run: |
         ssh -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection successful to production"'
         
-    - name: Test environment diagnostic
+    - name: Deploy to Production via SSH
       run: |
-        cd ansible
-        ansible-playbook -i inventory/hosts.yml playbooks/test-environment.yml --limit production -vvv
-      env:
-        ANSIBLE_HOST_KEY_CHECKING: False
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="/opt/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+
+        # Create docker-compose file
+        cat > $TARGET_DIR/docker-compose.yml <<EOL
+        version: '3'
+
+        services:
+          api:
+            image: ${IMAGE}
+            restart: always
+            ports:
+              - "3000:3000"
+            environment:
+              - NODE_ENV=production
+              - PORT=3000
+            volumes:
+              - api_data:/app/data
+
+        volumes:
+          api_data:
+        EOL
+
+        # Pull and start containers
+        cd $TARGET_DIR
+        docker-compose pull
+        docker-compose up -d
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp -o StrictHostKeyChecking=no deploy.sh chelsea42_om@34.38.164.180:~/deploy.sh
         
-    - name: Deploy to Production
-      run: |
-        cd ansible
-        ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit production -e "docker_image=ghcr.io/omarovic42/mobile-api:${{ github.sha }}" -vvv
-      env:
-        ANSIBLE_HOST_KEY_CHECKING: False
+        # Execute script on server
+        ssh -o StrictHostKeyChecking=no chelsea42_om@34.38.164.180 'bash ~/deploy.sh'
