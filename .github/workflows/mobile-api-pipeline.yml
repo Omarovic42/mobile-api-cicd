@@ -1,4 +1,4 @@
-name: 📱 Mobile API CI/CD - Omarovic42 v7 (RSA Key)
+name: 📱 Mobile API CI/CD - Omarovic42 v9 (With New RSA Key)
 
 on:
   push:
@@ -76,48 +76,124 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Generate fresh SSH key for testing
+    - name: Setup SSH environment for staging
       run: |
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
-        
-        # Generate a new temporary key for testing
-        ssh-keygen -t rsa -b 4096 -f ~/.ssh/temp_key -N ""
-        
-        # Display the public key that should be added to authorized_keys
-        echo "===== PUBLIC KEY THAT SHOULD BE ADDED TO SERVER ====="
-        cat ~/.ssh/temp_key.pub
-        echo "======================================================"
-        
-    - name: Setup SSH with secret key
-      run: |
-        # Now setup the actual key from secrets
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-        chmod 600 ~/.ssh/id_ed25519
-        ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub || echo "Failed to extract public key"
-        
-        # Display key information for debugging
-        echo "===== KEY TYPE INFORMATION ====="
-        ssh-keygen -l -f ~/.ssh/id_ed25519 || echo "Failed to get key info"
-        
-        # Configure SSH
-        echo "Host staging" > ~/.ssh/config
-        echo "  HostName 35.233.124.20" >> ~/.ssh/config
-        echo "  User chelsea42_om" >> ~/.ssh/config
-        echo "  IdentityFile ~/.ssh/id_ed25519" >> ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "StrictHostKeyChecking no" > ~/.ssh/config
         chmod 600 ~/.ssh/config
         
-        # Setup SSH agent
-        eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_ed25519 || echo "Failed to add key to agent"
-        
-    - name: Add staging host to known_hosts
+    - name: Test SSH connection to staging
       run: |
-        ssh-keyscan -H 35.233.124.20 >> ~/.ssh/known_hosts
+        ssh -v -o ConnectTimeout=10 chelsea42_om@35.233.124.20 'echo "SSH connection succeeded to staging"'
         
-    - name: Test SSH connectivity with debug
+    - name: Deploy to Staging via SSH
       run: |
-        echo "Testing SSH connection with debug output..."
-        ssh -vvv -o ConnectTimeout=10 -i ~/.ssh/id_ed25519 chelsea42_om@35.233.124.20 'echo "SSH connection test"' || echo "SSH connection failed"
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="$HOME/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+        cd $TARGET_DIR
+        
+        echo "Using direct docker run command..."
+        docker pull ${IMAGE}
+        
+        # Stop and remove any existing container
+        docker stop mobile-api 2>/dev/null || true
+        docker rm mobile-api 2>/dev/null || true
+        
+        # Run the new container
+        docker run -d --name mobile-api \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            --restart always \
+            ${IMAGE}
+        
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
+        echo "Deployment completed successfully!"
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp deploy.sh chelsea42_om@35.233.124.20:~/deploy.sh
+        
+        # Execute script on server
+        ssh chelsea42_om@35.233.124.20 'bash ~/deploy.sh'
+
+  deploy-production:
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH environment for production
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "StrictHostKeyChecking no" > ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        
+    - name: Test SSH connection to production
+      run: |
+        ssh -v -o ConnectTimeout=10 chelsea42_om@34.38.164.180 'echo "SSH connection succeeded to production"'
+        
+    - name: Deploy to Production via SSH
+      run: |
+        # Create deploy script
+        cat > deploy.sh <<'EOF'
+        #!/bin/bash
+        set -e
+
+        # Variables
+        IMAGE="ghcr.io/omarovic42/mobile-api:${{ github.sha }}"
+        TARGET_DIR="$HOME/mobile-api"
+
+        # Create directory if needed
+        mkdir -p $TARGET_DIR
+        cd $TARGET_DIR
+        
+        echo "Using direct docker run command..."
+        docker pull ${IMAGE}
+        
+        # Stop and remove any existing container
+        docker stop mobile-api 2>/dev/null || true
+        docker rm mobile-api 2>/dev/null || true
+        
+        # Run the new container
+        docker run -d --name mobile-api \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            --restart always \
+            ${IMAGE}
+        
+        # Verify container is running
+        echo "Containers running:"
+        docker ps
+        echo "Deployment completed successfully!"
+        EOF
+
+        # Make script executable and copy to server
+        chmod +x deploy.sh
+        scp deploy.sh chelsea42_om@34.38.164.180:~/deploy.sh
+        
+        # Execute script on server
+        ssh chelsea42_om@34.38.164.180 'bash ~/deploy.sh'
